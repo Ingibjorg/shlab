@@ -243,7 +243,11 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    return 0;     /* not a builtin command */
+	if (!strcmp(argv[0], "quit")) 	/* quit command */
+        exit(0);
+	if (!strcmp(argv[0], "&")) 		/* Ignore singleton & */
+    	return 1;
+	return 0;						/* Not a builtin command */
 }
 
 /* 
