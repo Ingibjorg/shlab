@@ -278,11 +278,6 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-	pid_t pid;
-	while ((pid = waitpid(-1, NULL, 0)) > 0) /* Reap a zombie child */
-		deletejob(pid); /* Delete the child from the job list */
-	if (errno != ECHILD)
-		unix_error("waitpid error");
     return;
 }
 
