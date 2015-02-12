@@ -273,7 +273,8 @@ int builtin_cmd(char **argv)
 	if (strcmp(argv[0], "bg") == 0) {   /* background command */
 		return 1;
 	}
-	if (strcmp(argv[0], "jobs") == 0) { /* jobs command */
+	if (strcmp(argv[0], "jobs") == 0) { 	/* jobs command */
+		listjobs(jobs);			/* lists all background jobs */
 		return 1;
 	}
     return 0;     /* not a builtin command */
@@ -291,9 +292,9 @@ void do_bgfg(char **argv)
  * waitfg - Block until process pid is no longer the foreground process
  */
 void waitfg(pid_t pid)
-{
-	struct job_t *job = getjobpid(jobs, pid);
-	while (job->state == FG) {
+{	
+	// while current fg job has pid sleep
+	while (fgpid(jobs) == pid) {
 		sleep(1);
 	}
 	return;
@@ -316,7 +317,7 @@ void sigchld_handler(int sig)
 	int status;		/* job status */
 
 	while ((pid = waitpid(-1, &status, WNOHANG)) > 0){ 
-		deletejob(jobs, pid); /* reaping the child process*/
+		deletejob(jobs, pid); /* reaping the child process */
 	}
    	 return;
 }
@@ -328,7 +329,16 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    return;
+	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
+	struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
+	if(pid != 0) {
+		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+		if (kill(pid, SIGINT) != 0) {		/* Kill process and check for error */
+			unix_error("SIGINT error");	/* Report error */
+		}
+		deletejob(jobs, pid);			/* Delete job from job list */
+	} 
+	return;
 }
 
 /*
