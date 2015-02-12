@@ -271,10 +271,12 @@ int builtin_cmd(char **argv)
 		return 1;
 	}
 	if (strcmp(argv[0], "bg") == 0) {   /* background command */
+		char * split = strtok(argv[1], "%");
+		int jid = split[0] - '0';
 		return 1;
 	}
 	if (strcmp(argv[0], "jobs") == 0) { 	/* jobs command */
-		listjobs(jobs);			/* lists all background jobs */
+		listjobs(jobs);			/* lists all jobs */
 		return 1;
 	}
     return 0;     /* not a builtin command */
@@ -331,7 +333,7 @@ void sigint_handler(int sig)
 {
 	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
 	struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
-	if(pid != 0) {
+	if (pid != 0) {					
 		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
 		if (kill(pid, SIGINT) != 0) {		/* Kill process and check for error */
 			unix_error("SIGINT error");	/* Report error */
@@ -348,7 +350,13 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    return;
+	pid_t pid = fgpid(jobs);
+	struct job_t *job = getjobpid(jobs, pid);
+	if (pid != 0) {
+		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
+		job->state = ST; 	/* Changing state of job to stopped */ 
+	}
+	return;
 }
 
 /*********************
