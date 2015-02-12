@@ -174,8 +174,27 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
-	char *argv[MAXARGS];
-	int bg = parseline(cmdline, argv);
+	pid_t pid; 				/* process id of the process*/
+	struct job_t *job;			/* New job */
+	char *argv[MAXARGS]; 			/* Creating argument vector */
+	int bg = parseline(cmdline, argv); 	/* Parses input */
+	int bicmd = builtin_cmd(argv); 		/* Run cmd if built in */
+	if (!bicmd){
+		if ((pid = fork()) == 0) {		/* In child */
+			execvp(argv[0], argv);	/* Path to command, argument vector */
+			printf("%s: Command not found\n", argv[0]);
+			exit(0);
+		}
+		addjob(jobs, pid, bg ? BG : FG, cmdline);
+		if (!bg) {			/* Child is not a background process*/
+			waitfg(pid);	
+		}
+		else {
+			job = getjobpid(jobs, pid);
+			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline );	/* print status message*/
+			
+		}
+	}	
     return;
 }
 
@@ -245,8 +264,17 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-	if (!strcmp(argv[0], "quit")){ 	/* quit command */
+	if (strcmp(argv[0], "quit") == 0) { 	/* quit command */
 		exit(0);
+	}
+	if (strcmp(argv[0], "fg") == 0) {	/* forground command */
+		return 1;
+	}
+	if (strcmp(argv[0], "bg") == 0) {   /* background command */
+		return 1;
+	}
+	if (strcmp(argv[0], "jobs") == 0) { /* jobs command */
+		return 1;
 	}
     return 0;     /* not a builtin command */
 }
@@ -264,7 +292,11 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    return;
+	struct job_t *job = getjobpid(jobs, pid);
+	while (job->state == FG) {
+		sleep(1);
+	}
+	return;
 }
 
 /*****************
@@ -280,7 +312,13 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    return;
+	pid_t pid;		/* Child process id */
+	int status;		/* job status */
+
+	while ((pid = waitpid(-1, &status, WNOHANG)) > 0){ 
+		deletejob(jobs, pid); /* reaping the child process*/
+	}
+   	 return;
 }
 
 /* 
