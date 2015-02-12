@@ -268,11 +268,11 @@ int builtin_cmd(char **argv)
 		exit(0);
 	}
 	if (strcmp(argv[0], "fg") == 0) {	/* forground command */
+		do_bgfg(argv);
 		return 1;
 	}
 	if (strcmp(argv[0], "bg") == 0) {   /* background command */
-		char * split = strtok(argv[1], "%");
-		int jid = split[0] - '0';
+		do_bgfg(argv);
 		return 1;
 	}
 	if (strcmp(argv[0], "jobs") == 0) { 	/* jobs command */
@@ -287,7 +287,19 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    return;
+	if (argv[1] != NULL ) {		/* Check for pid or jid */
+		if(strstr(argv[1], "%") != NULL){ /* Check if jid */
+			int jid = atoi(argv[1]+1); /* Extract jid */
+ 		
+		}
+		else { 	/* pid */
+				
+		}
+    	}
+	else {
+		printf("%s command requires PID or %%jobid argument\n", argv[0]);
+	}
+	return;
 }
 
 /* 
