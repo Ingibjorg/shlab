@@ -423,7 +423,7 @@ void sigtstp_handler(int sig)
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
 		fflush(stdout);
 		job->state = ST; 	/* Changing state of job to stopped */
-		kill(-pid, SIGTSTP);	/* Stops test13 from working */ 
+//		kill(-pid, SIGTSTP);	/* Stops test13 from working */ 
 	}
 	return;
 }
