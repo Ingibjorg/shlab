@@ -376,10 +376,18 @@ void sigchld_handler(int sig)
 	pid_t pid;		/* Child process id */
 	int status;		/* job status */
 
-	while ((pid = waitpid(-1, &status, WNOHANG)) > 0){ 
-		deletejob(jobs, pid); /* reaping the child process */
+	while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){ 
+		if (WIFEXITED(status)) {
+			deletejob(jobs, pid);
+		}
+		else if (WIFSTOPPED(status)) {
+			sigtstp_handler(20);
+		}
+		else if (WIFSIGNALED(status)) {
+			sigint_handler(-2);
+		}
 	}
-   	 return;
+   	return;
 }
 
 /* 
@@ -392,9 +400,12 @@ void sigint_handler(int sig)
 	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
 	if (pid != 0) {
 		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
-		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-		fflush(stdout);
-		kill(-pid, sig);				/* Kill process group */  
+		kill(-pid, SIGINT);				/* Kill process group */
+		if (sig < 0){  
+			printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, abs(sig));
+			fflush(stdout);
+			deletejob(jobs, pid);  
+		}
 	} 
 	return;
 }
@@ -412,7 +423,7 @@ void sigtstp_handler(int sig)
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
 		fflush(stdout);
 		job->state = ST; 	/* Changing state of job to stopped */
-		//kill(-pid, sig);	/* Stops test13 from working */ 
+		kill(-pid, SIGTSTP);	/* Stops test13 from working */ 
 	}
 	return;
 }
