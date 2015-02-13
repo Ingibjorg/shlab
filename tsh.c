@@ -327,6 +327,8 @@ void do_bgfg(char **argv)
 				return;
 			}
 			//int pid = atoi(argv[1]); 			/* Extract pid */
+			int jid = atoi(argv[1]+1);                      /* Extract jid */
+			job = getjobjid(jobs, jid);                     /* Get job from jid */
 			if (job == NULL) {				/* Job not found */
 				printf("(%s): No such process\n", argv[1]);	
 				fflush(stdout);
