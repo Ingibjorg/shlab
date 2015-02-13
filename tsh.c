@@ -299,7 +299,13 @@ void do_bgfg(char **argv)
 {
 	if (argv[1] != NULL ) {						/* Check for pid or jid */
 		struct job_t *job;
-		if(strstr(argv[1], "%") != NULL){ 			/* Check if jid */
+		if (strstr(argv[1], "%") != NULL){ 			/* Check if jid */
+			char* argvchar = argv[1]; 
+			if (!isdigit(argvchar[1])) {			/* Check if valid argv */
+				printf("%s command requires PID or %%jobid\n", argv[0]);
+				fflush(stdout);
+				return;	
+			}
 			int jid = atoi(argv[1]+1); 			/* Extract jid */
  			job = getjobjid(jobs, jid);       		/* Get job from jid */
 			if (job == NULL) {				/* Job not found */
@@ -309,6 +315,12 @@ void do_bgfg(char **argv)
 			}
 		}
 		else { 							/* Else pid */
+			char* argvchar = argv[1];
+			if (!isdigit(argvchar[0])) {			/* Check if valid argv */
+				printf("%s command requires PID or %%jobid\n", argv[0]);
+				fflush(stdout);
+				return;
+			}
 			int pid = atoi(argv[1]); 			/* Extract pid */
 			job = getjobpid(jobs, pid);		       	/* Get job from pid */
 			if (job == NULL) {				/* Job not found */
@@ -399,7 +411,8 @@ void sigtstp_handler(int sig)
 		struct job_t *job = getjobpid(jobs, pid);
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
 		fflush(stdout);
-		job->state = ST; 	/* Changing state of job to stopped */ 
+		job->state = ST; 	/* Changing state of job to stopped */
+		//kill(-pid, sig);	/* Stops test13 from working */ 
 	}
 	return;
 }
