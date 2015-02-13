@@ -347,7 +347,7 @@ void sigint_handler(int sig)
 	struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
 	if (pid != 0) {					
 		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-		if (kill(pid, SIGINT) != 0) {		/* Kill process and check for error */
+		if (killpg(-pid, SIGINT) != 0) {		/* Kill process and check for error */
 			unix_error("SIGINT error");	/* Report error */
 		}
 		deletejob(jobs, pid);			/* Delete job from job list */
@@ -363,8 +363,8 @@ void sigint_handler(int sig)
 void sigtstp_handler(int sig) 
 {
 	pid_t pid = fgpid(jobs);
-	struct job_t *job = getjobpid(jobs, pid);
 	if (pid != 0) {
+		struct job_t *job = getjobpid(jobs, pid);
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
 		job->state = ST; 	/* Changing state of job to stopped */ 
 	}
