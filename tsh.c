@@ -187,22 +187,27 @@ void eval(char *cmdline)
 		sigprocmask(SIG_BLOCK, &mask, 0);	/* Block signals with mask */
 		
 		if ((pid = fork()) == 0) {		/* In child */
+			Signal(SIGINT, SIG_DFL);
+			Signal(SIGTSTP, SIG_DFL);
+	                sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
+
 			setpgid(0,0);			/* New child process group id */
 			execvp(argv[0], argv);		/* Execute command with argument vector */
 			printf("%s: Command not found\n", argv[0]);
 			fflush(stdout);
-			exit(0);
+			exit(1);
 		}
-		addjob(jobs, pid, bg ? BG : FG, cmdline);
-		sigprocmask(SIG_UNBLOCK, &mask, NULL);	/* Unblock signals */ 
 		if (!bg) {				/* Child is not a background process*/
+ 	        	addjob(jobs, pid, bg ? BG : FG, cmdline);
+                	sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */ 
 			waitfg(pid);	
 		}
 		else {
+                        addjob(jobs, pid, bg ? BG : FG, cmdline);	
 			job = getjobpid(jobs, pid);
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline );	/* print status message*/
 			fflush(stdout);
-			
+	                sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
 		}
 	}	
     return;
@@ -307,8 +312,8 @@ void do_bgfg(char **argv)
 				return;	
 			}
 			int jid = atoi(argv[1]+1); 			/* Extract jid */
- 			job = getjobjid(jobs, jid);       		/* Get job from jid */
-			if (job == NULL) {				/* Job not found */
+			job = getjobjid(jobs, jid);                     /* Get job from jid */
+			if (!job) {				/* Job not found */
 				printf("%s: No such job\n", argv[1]);
 				fflush(stdout);
 				return;
@@ -321,8 +326,7 @@ void do_bgfg(char **argv)
 				fflush(stdout);
 				return;
 			}
-			int pid = atoi(argv[1]); 			/* Extract pid */
-			job = getjobpid(jobs, pid);		       	/* Get job from pid */
+			//int pid = atoi(argv[1]); 			/* Extract pid */
 			if (job == NULL) {				/* Job not found */
 				printf("(%s): No such process\n", argv[1]);	
 				fflush(stdout);
@@ -333,11 +337,11 @@ void do_bgfg(char **argv)
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
 			fflush(stdout);
 			job->state = BG;				/* Changing status to BG */
-			kill(job->pid, SIGCONT);			/* Sending SIGCONT to pid*/
+			kill(-job->pid, SIGCONT);			/* Sending SIGCONT to pid*/
 		}
 		else{							/* To forground */
 			job->state = FG;                                /* Changing status to FG */
-			kill(job->pid, SIGCONT);                        /* Sending SIGCONT to pid*/	
+			kill(-job->pid, SIGCONT);                        /* Sending SIGCONT to pid*/	
 			waitfg(job->pid);
 		}
 	}
@@ -381,7 +385,10 @@ void sigchld_handler(int sig)
 			deletejob(jobs, pid);
 		}
 		else if (WIFSTOPPED(status)) {
-			sigtstp_handler(20);
+			struct job_t *job = getjobpid(jobs, pid);
+	        //        printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
+		//	fflush(stdout);
+			job->state = ST;        /* Change job state to Stopped*/
 		}
 		else if (WIFSIGNALED(status)) {
 			sigint_handler(-2);
@@ -418,12 +425,12 @@ void sigint_handler(int sig)
 void sigtstp_handler(int sig) 
 {
 	pid_t pid = fgpid(jobs);
+	printf("VUUU");
 	if (pid != 0) {
-		struct job_t *job = getjobpid(jobs, pid);
+		struct job_t *job = getjobpid(jobs, pid);       /* Get job from pid */
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
-		fflush(stdout);
-		job->state = ST; 	/* Changing state of job to stopped */
-//		kill(-pid, SIGTSTP);	/* Stops test13 from working */ 
+                fflush(stdout);
+		kill(-pid, SIGTSTP);	/* Stops test13 from working */ 
 	}
 	return;
 }
