@@ -179,15 +179,23 @@ void eval(char *cmdline)
 	char *argv[MAXARGS]; 			/* Creating argument vector */
 	int bg = parseline(cmdline, argv); 	/* Parses input */
 	int bicmd = builtin_cmd(argv); 		/* Run cmd if built in */
+	sigset_t mask;          		/* Mask to block signals */
+
 	if (!bicmd){
+		sigemptyset(&mask);                     /* Init an empty mask */
+		sigaddset(&mask, SIGCHLD);              /* Adding SIGCHLD to mask*/
+		sigprocmask(SIG_BLOCK, &mask, 0);	/* Block signals with mask */
+		
 		if ((pid = fork()) == 0) {		/* In child */
-			execvp(argv[0], argv);	/* Path to command, argument vector */
+			setpgid(0,0);			/* New child process group id */
+			execvp(argv[0], argv);		/* Execute command with argument vector */
 			printf("%s: Command not found\n", argv[0]);
 			fflush(stdout);
 			exit(0);
 		}
 		addjob(jobs, pid, bg ? BG : FG, cmdline);
-		if (!bg) {			/* Child is not a background process*/
+		sigprocmask(SIG_UNBLOCK, &mask, NULL);	/* Unblock signals */ 
+		if (!bg) {				/* Child is not a background process*/
 			waitfg(pid);	
 		}
 		else {
@@ -374,10 +382,7 @@ void sigint_handler(int sig)
 		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
 		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
 		fflush(stdout);
-		if (kill(pid, SIGINT) != 0) {		/* Kill process and check for error */
-			unix_error("SIGINT error");	/* Report error */
-		}
-		deletejob(jobs, pid);			/* Delete job from job list */
+		kill(-pid, sig);				/* Kill process group */  
 	} 
 	return;
 }
