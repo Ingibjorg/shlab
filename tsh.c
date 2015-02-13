@@ -183,6 +183,7 @@ void eval(char *cmdline)
 		if ((pid = fork()) == 0) {		/* In child */
 			execvp(argv[0], argv);	/* Path to command, argument vector */
 			printf("%s: Command not found\n", argv[0]);
+			fflush(stdout);
 			exit(0);
 		}
 		addjob(jobs, pid, bg ? BG : FG, cmdline);
@@ -192,6 +193,7 @@ void eval(char *cmdline)
 		else {
 			job = getjobpid(jobs, pid);
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline );	/* print status message*/
+			fflush(stdout);
 			
 		}
 	}	
@@ -298,6 +300,7 @@ void do_bgfg(char **argv)
     	}
 	else {
 		printf("%s command requires PID or %%jobid argument\n", argv[0]);
+		fflush(stdout);
 	}
 	return;
 }
@@ -344,9 +347,10 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
 	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
-	struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
-	if (pid != 0) {					
+	if (pid != 0) {
+		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
 		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+		fflush(stdout);
 		if (killpg(-pid, SIGINT) != 0) {		/* Kill process and check for error */
 			unix_error("SIGINT error");	/* Report error */
 		}
@@ -366,6 +370,7 @@ void sigtstp_handler(int sig)
 	if (pid != 0) {
 		struct job_t *job = getjobpid(jobs, pid);
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
+		fflush(stdout);
 		job->state = ST; 	/* Changing state of job to stopped */ 
 	}
 	return;
