@@ -289,15 +289,38 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-	if (argv[1] != NULL ) {		/* Check for pid or jid */
-		if(strstr(argv[1], "%") != NULL){ /* Check if jid */
-			int jid = atoi(argv[1]+1); /* Extract jid */
- 		
+	if (argv[1] != NULL ) {						/* Check for pid or jid */
+		struct job_t *job;
+		if(strstr(argv[1], "%") != NULL){ 			/* Check if jid */
+			int jid = atoi(argv[1]+1); 			/* Extract jid */
+ 			job = getjobjid(jobs, jid);       		/* Get job from jid */
+			if (job == NULL) {				/* Job not found */
+				printf("%s: No such job\n", argv[1]);
+				fflush(stdout);
+				return;
+			}
 		}
-		else { 	/* pid */
-				
+		else { 							/* Else pid */
+			int pid = atoi(argv[1]); 			/* Extract pid */
+			job = getjobpid(jobs, pid);		       	/* Get job from pid */
+			if (job == NULL) {				/* Job not found */
+				printf("(%s): No such process\n", argv[1]);	
+				fflush(stdout);
+				return;
+			}	
 		}
-    	}
+		if (strcmp(argv[0], "bg") == 0) {			/* To background */
+			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+			fflush(stdout);
+			job->state = BG;				/* Changing status to BG */
+			kill(job->pid, SIGCONT);			/* Sending SIGCONT to pid*/
+		}
+		else{							/* To forground */
+			job->state = FG;                                /* Changing status to FG */
+			kill(job->pid, SIGCONT);                        /* Sending SIGCONT to pid*/	
+			waitfg(job->pid);
+		}
+	}
 	else {
 		printf("%s command requires PID or %%jobid argument\n", argv[0]);
 		fflush(stdout);
@@ -351,7 +374,7 @@ void sigint_handler(int sig)
 		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
 		printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
 		fflush(stdout);
-		if (killpg(-pid, SIGINT) != 0) {		/* Kill process and check for error */
+		if (kill(pid, SIGINT) != 0) {		/* Kill process and check for error */
 			unix_error("SIGINT error");	/* Report error */
 		}
 		deletejob(jobs, pid);			/* Delete job from job list */
