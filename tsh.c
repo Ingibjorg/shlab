@@ -383,10 +383,16 @@ void sigchld_handler(int sig)
 		}
 		else if (WIFSTOPPED(status)) {	/* Child process is stopped */
 			struct job_t *job = getjobpid(jobs, pid);
+			printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, 20);
+			fflush(stdout);
 			job->state = ST;			/* Change job state to stopped */
 		}
 		else if (WIFSIGNALED(status)) { /* Uncaught signal to terminate child*/
-			sigint_handler(-2);			/* Send a SIGINT to child */
+			struct job_t *job = getjobpid(jobs, pid);
+			printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, 2);
+			fflush(stdout);
+			deletejob(jobs, pid);
+			//sigint_handler(-2);			/* Send a SIGINT to child */
 		}
 	}
    	return;
@@ -401,12 +407,12 @@ void sigint_handler(int sig)
 {
 	pid_t pid = fgpid(jobs);						/* Get pid of forground process */
 	if (pid != 0) {									/* Check if process is found */
-		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
+		//struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
 		kill(-pid, SIGINT);							/* Send SIGINT to process group */
 		if (sig < 0){  								/* Signal from sigchld_handler */
-			printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, abs(sig));
-			fflush(stdout);
-			deletejob(jobs, pid);  					/* Delete job from job list */
+			//printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, abs(sig));
+			//fflush(stdout);
+			//deletejob(jobs, pid);  					/* Delete job from job list */
 		}
 	} 
 	return;
@@ -421,9 +427,9 @@ void sigtstp_handler(int sig)
 {
 	pid_t pid = fgpid(jobs);						/* Get pid of forground process */
 	if (pid != 0) {									/* Check if process is found */
-		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
-		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
-		fflush(stdout);
+		//struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
+		//printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
+		//fflush(stdout);
 		kill(-pid, SIGTSTP); 						/* Send SIGTSTP to process group */
 	}
 	return;
