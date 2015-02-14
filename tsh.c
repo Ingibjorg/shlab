@@ -186,28 +186,25 @@ void eval(char *cmdline)
 		sigaddset(&mask, SIGCHLD);			/* Adding SIGCHLD to mask*/
 		sigprocmask(SIG_BLOCK, &mask, 0);	/* Block signals with mask */
 		
-		if ((pid = fork()) == 0) {			/* In child */
-			//Signal(SIGINT, SIG_DFL);
-			//Signal(SIGTSTP, SIG_DFL);
+		if ((pid = fork()) == 0) {					/* In child */
 			sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
-
-			setpgid(0,0);				/* New child process group id */
-			execvp(argv[0], argv);		/* Execute command with argument vector */
+			setpgid(0,0);							/* New child process group id */
+			execvp(argv[0], argv);					/* Execute command with argument vector */
 			printf("%s: Command not found\n", argv[0]);
 			fflush(stdout);
 			exit(1);
 		}
-		if (!bg) {						/* Child is not a background process*/
- 	        	addjob(jobs, pid, bg ? BG : FG, cmdline);
-                	sigprocmask(SIG_UNBLOCK, &mask, NULL);	/* Unblock signals */ 
+		if (!bg) {											/* Forground process */
+			addjob(jobs, pid, FG, cmdline);					/* Add job to job list */
+			sigprocmask(SIG_UNBLOCK, &mask, NULL);			/* Unblock signals */ 
 			waitfg(pid);	
 		}
-		else {
-                        addjob(jobs, pid, bg ? BG : FG, cmdline);	
-			job = getjobpid(jobs, pid);
+		else {												/* Background process */
+			addjob(jobs, pid, BG, cmdline);					/* Add job to job list */
+			job = getjobpid(jobs, pid);						/* Get job for jid */
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline );	/* print status message*/
 			fflush(stdout);
-	                sigprocmask(SIG_UNBLOCK, &mask, NULL);				/* Unblock signals */
+			sigprocmask(SIG_UNBLOCK, &mask, NULL);			/* Unblock signals */
 		}
 	}	
     return;
@@ -222,14 +219,14 @@ void eval(char *cmdline)
  */
 int parseline(const char *cmdline, char **argv) 
 {
-    static char array[MAXLINE]; /* holds local copy of command line */
-    char *buf = array;          /* ptr that traverses command line */
-    char *delim;                /* points to first space delimiter */
-    int argc;                   /* number of args */
-    int bg;                     /* background job? */
+    static char array[MAXLINE];	/* holds local copy of command line */
+    char *buf = array;			/* ptr that traverses command line */
+    char *delim;				/* points to first space delimiter */
+    int argc;					/* number of args */
+    int bg;						/* background job? */
 
     strcpy(buf, cmdline);
-    buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
+    buf[strlen(buf)-1] = ' ';	/* replace trailing '\n' with space */
     while (*buf && (*buf == ' ')) { /* ignore leading spaces */
 	buf++;
     }
@@ -279,22 +276,22 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-	if (strcmp(argv[0], "quit") == 0) { 	/* quit command */
+	if (strcmp(argv[0], "quit") == 0) {		/* Quit command */
 		exit(0);
 	}
-	if (strcmp(argv[0], "fg") == 0) {	/* forground command */
+	if (strcmp(argv[0], "fg") == 0) {		/* Forground command */
 		do_bgfg(argv);
 		return 1;
 	}
-	if (strcmp(argv[0], "bg") == 0) {   /* background command */
+	if (strcmp(argv[0], "bg") == 0) {		/* Background command */
 		do_bgfg(argv);
 		return 1;
 	}
-	if (strcmp(argv[0], "jobs") == 0) { 	/* jobs command */
-		listjobs(jobs);			/* lists all jobs */
+	if (strcmp(argv[0], "jobs") == 0) {		/* Jobs command */
+		listjobs(jobs);						/* Lists all jobs */
 		return 1;
 	}
-    return 0;     /* not a builtin command */
+    return 0;     							/* Not a builtin command */
 }
 
 /* 
@@ -302,34 +299,33 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-	if (argv[1] != NULL ) {						/* Check for pid or jid */
+	if (argv[1] != NULL ) {							/* Check for pid or jid */
 		struct job_t *job;
 		if (strstr(argv[1], "%") != NULL){ 			/* Check if jid */
 			char* argvchar = argv[1]; 
-			if (!isdigit(argvchar[1])) {			/* Check if valid argv */
+			if (!isdigit(argvchar[1])) {			/* Check if invalid argv */
 				printf("%s command requires PID or %%jobid\n", argv[0]);
 				fflush(stdout);
 				return;	
 			}
-			int jid = atoi(argv[1]+1); 			/* Extract jid */
-			job = getjobjid(jobs, jid);                     /* Get job from jid */
-			if (!job) {				/* Job not found */
+			int jid = atoi(argv[1]+1);	 			/* Extract jid */
+			job = getjobjid(jobs, jid);				/* Get job from jid */
+			if (!job) {								/* Job not found */
 				printf("%s: No such job\n", argv[1]);
 				fflush(stdout);
 				return;
 			}
 		}
-		else { 							/* Else pid */
+		else {										/* Else pid */
 			char* argvchar = argv[1];
-			if (!isdigit(argvchar[0])) {			/* Check if valid argv */
+			if (!isdigit(argvchar[0])) {			/* Check if invalid argv */
 				printf("%s command requires PID or %%jobid\n", argv[0]);
 				fflush(stdout);
 				return;
 			}
-			//int pid = atoi(argv[1]); 			/* Extract pid */
-			int jid = atoi(argv[1]+1);                      /* Extract jid */
-			job = getjobjid(jobs, jid);                     /* Get job from jid */
-			if (job == NULL) {				/* Job not found */
+			int pid = atoi(argv[1]);				/* Extract pid */
+			job = getjobpid(jobs, pid);				/* Get job from jid */
+			if (job == NULL) {						/* Job not found */
 				printf("(%s): No such process\n", argv[1]);	
 				fflush(stdout);
 				return;
@@ -338,16 +334,16 @@ void do_bgfg(char **argv)
 		if (strcmp(argv[0], "bg") == 0) {			/* To background */
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
 			fflush(stdout);
-			job->state = BG;				/* Changing status to BG */
-			kill(-job->pid, SIGCONT);			/* Sending SIGCONT to pid*/
+			job->state = BG;						/* Changing status to BG */
+			kill(-job->pid, SIGCONT);				/* Sending SIGCONT to pid*/
 		}
-		else{							/* To forground */
-			job->state = FG;                                /* Changing status to FG */
-			kill(-job->pid, SIGCONT);                        /* Sending SIGCONT to pid*/	
+		else{										/* To forground */
+			job->state = FG;						/* Changing status to FG */
+			kill(-job->pid, SIGCONT);				/* Sending SIGCONT to pid*/	
 			waitfg(job->pid);
 		}
 	}
-	else {
+	else {											/* Missing argument */
 		printf("%s command requires PID or %%jobid argument\n", argv[0]);
 		fflush(stdout);
 	}
