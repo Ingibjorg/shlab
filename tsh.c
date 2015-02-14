@@ -394,6 +394,9 @@ void sigchld_handler(int sig)
 			fflush(stdout);
 			deletejob(jobs, pid);				/* Delete job from job list */
 		}
+		else {
+			unix_error("SIGCHLD error");     		/* Report error */
+		}
 	}
    	return;
 }
@@ -405,10 +408,10 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-	pid_t pid = fgpid(jobs);		/* Get pid of forground process */
-	if (pid != 0) {				/* Check if process is found */
+	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
+	if (pid != 0) {					/* Check if process is found */
 		if (kill(-pid, SIGINT) != 0) {		/* Send SIGINT to process group */
-			unix_error("SIGINT error");
+			unix_error("SIGINT error");	/* Report error */
 		}
 	}
 	return;
@@ -421,10 +424,10 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-	pid_t pid = fgpid(jobs);	/* Get pid of forground process */
-	if (pid != 0) {			/* Check if process is found */
+	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
+	if (pid != 0) {					/* Check if process is found */
 		if (kill(-pid, SIGTSTP) != 0) { 	/* Send SIGTSTP to process group */
-			unix_error("SIGTSTP error");
+			unix_error("SIGTSTP error");	/* Report error */
 		}
 	}
 	return;
