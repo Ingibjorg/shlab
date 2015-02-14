@@ -187,8 +187,8 @@ void eval(char *cmdline)
 		sigprocmask(SIG_BLOCK, &mask, 0);	/* Block signals with mask */
 		
 		if ((pid = fork()) == 0) {			/* In child */
-			Signal(SIGINT, SIG_DFL);
-			Signal(SIGTSTP, SIG_DFL);
+			//Signal(SIGINT, SIG_DFL);
+			//Signal(SIGTSTP, SIG_DFL);
 			sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
 
 			setpgid(0,0);				/* New child process group id */
