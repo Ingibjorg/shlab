@@ -174,32 +174,32 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
-	pid_t pid; 				/* process id of the process*/
-	struct job_t *job;			/* New job */
-	char *argv[MAXARGS]; 			/* Creating argument vector */
+	pid_t pid; 							/* Process id of the process*/
+	struct job_t *job;					/* Pointer to job */
+	char *argv[MAXARGS]; 				/* Creating argument vector */
 	int bg = parseline(cmdline, argv); 	/* Parses input */
 	int bicmd = builtin_cmd(argv); 		/* Run cmd if built in */
-	sigset_t mask;          		/* Mask to block signals */
+	sigset_t mask;          			/* Mask to block signals */
 
 	if (!bicmd){
-		sigemptyset(&mask);                     /* Init an empty mask */
-		sigaddset(&mask, SIGCHLD);              /* Adding SIGCHLD to mask*/
+		sigemptyset(&mask);					/* Init an empty mask */
+		sigaddset(&mask, SIGCHLD);			/* Adding SIGCHLD to mask*/
 		sigprocmask(SIG_BLOCK, &mask, 0);	/* Block signals with mask */
 		
-		if ((pid = fork()) == 0) {		/* In child */
+		if ((pid = fork()) == 0) {			/* In child */
 			Signal(SIGINT, SIG_DFL);
 			Signal(SIGTSTP, SIG_DFL);
-	                sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
+			sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
 
-			setpgid(0,0);			/* New child process group id */
+			setpgid(0,0);				/* New child process group id */
 			execvp(argv[0], argv);		/* Execute command with argument vector */
 			printf("%s: Command not found\n", argv[0]);
 			fflush(stdout);
 			exit(1);
 		}
-		if (!bg) {				/* Child is not a background process*/
+		if (!bg) {						/* Child is not a background process*/
  	        	addjob(jobs, pid, bg ? BG : FG, cmdline);
-                	sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */ 
+                	sigprocmask(SIG_UNBLOCK, &mask, NULL);	/* Unblock signals */ 
 			waitfg(pid);	
 		}
 		else {
@@ -207,7 +207,7 @@ void eval(char *cmdline)
 			job = getjobpid(jobs, pid);
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline );	/* print status message*/
 			fflush(stdout);
-	                sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock signals */
+	                sigprocmask(SIG_UNBLOCK, &mask, NULL);				/* Unblock signals */
 		}
 	}	
     return;
