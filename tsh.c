@@ -407,8 +407,10 @@ void sigint_handler(int sig)
 {
 	pid_t pid = fgpid(jobs);		/* Get pid of forground process */
 	if (pid != 0) {				/* Check if process is found */
-		kill(-pid, SIGINT);		/* Send SIGINT to process group */
-	} 
+		if (kill(-pid, SIGINT) != 0) {		/* Send SIGINT to process group */
+			unix_error("SIGINT error");
+		}
+	}
 	return;
 }
 
@@ -421,7 +423,9 @@ void sigtstp_handler(int sig)
 {
 	pid_t pid = fgpid(jobs);	/* Get pid of forground process */
 	if (pid != 0) {			/* Check if process is found */
-		kill(-pid, SIGTSTP); 	/* Send SIGTSTP to process group */
+		if (kill(-pid, SIGTSTP) != 0) { 	/* Send SIGTSTP to process group */
+			unix_error("SIGTSTP error");
+		}
 	}
 	return;
 }
