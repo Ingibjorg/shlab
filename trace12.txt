@@ -10,8 +10,8 @@ TSTP
 /bin/echo tsh> jobs
 jobs
 
-/bin/echo tsh> /bin/ps u
-/bin/ps u
+/bin/echo tsh> /bin/ps uxf
+/bin/ps uxf
 
 
 
