@@ -355,9 +355,8 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {	
-	// while current fg job has pid sleep
-	while (fgpid(jobs) == pid) {
-		sleep(1);
+	while (fgpid(jobs) == pid) {	/* While pid is in forground */
+		sleep(1);					/* Sleep */
 	}
 	return;
 }
@@ -375,21 +374,19 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-	pid_t pid;		/* Child process id */
-	int status;		/* job status */
+	pid_t pid;							/* Child process id */
+	int status;							/* job status */
 
-	while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){ 
-		if (WIFEXITED(status)) {
-			deletejob(jobs, pid);
+	while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0){ /* Handeling child process */
+		if (WIFEXITED(status)) {		/* Child terminates normally*/
+			deletejob(jobs, pid);		/* Delete job from job list*/
 		}
-		else if (WIFSTOPPED(status)) {
+		else if (WIFSTOPPED(status)) {	/* Child process is stopped */
 			struct job_t *job = getjobpid(jobs, pid);
-	        //        printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
-		//	fflush(stdout);
-			job->state = ST;        /* Change job state to Stopped*/
+			job->state = ST;			/* Change job state to stopped */
 		}
-		else if (WIFSIGNALED(status)) {
-			sigint_handler(-2);
+		else if (WIFSIGNALED(status)) { /* Uncaught signal to terminate child*/
+			sigint_handler(-2);			/* Send a SIGINT to child */
 		}
 	}
    	return;
@@ -402,14 +399,14 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-	pid_t pid = fgpid(jobs);			/* Get pid of forground process */
-	if (pid != 0) {
+	pid_t pid = fgpid(jobs);						/* Get pid of forground process */
+	if (pid != 0) {									/* Check if process is found */
 		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
-		kill(-pid, SIGINT);				/* Kill process group */
-		if (sig < 0){  
+		kill(-pid, SIGINT);							/* Send SIGINT to process group */
+		if (sig < 0){  								/* Signal from sigchld_handler */
 			printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, abs(sig));
 			fflush(stdout);
-			deletejob(jobs, pid);  
+			deletejob(jobs, pid);  					/* Delete job from job list */
 		}
 	} 
 	return;
@@ -422,12 +419,12 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-	pid_t pid = fgpid(jobs);
-	if (pid != 0) {
-		struct job_t *job = getjobpid(jobs, pid);       /* Get job from pid */
+	pid_t pid = fgpid(jobs);						/* Get pid of forground process */
+	if (pid != 0) {									/* Check if process is found */
+		struct job_t *job = getjobpid(jobs, pid);	/* Get job from pid */
 		printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
-                fflush(stdout);
-		kill(-pid, SIGTSTP);	/* Stops test13 from working */ 
+		fflush(stdout);
+		kill(-pid, SIGTSTP); 						/* Send SIGTSTP to process group */
 	}
 	return;
 }
