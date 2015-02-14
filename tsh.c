@@ -182,21 +182,36 @@ void eval(char *cmdline)
 	sigset_t mask;          		/* Mask to block signals */
 
 	if (!bicmd){
-		sigemptyset(&mask);			/* Init an empty mask */
-		sigaddset(&mask, SIGCHLD);		/* Adding SIGCHLD to mask*/
-		sigprocmask(SIG_BLOCK, &mask, 0);	/* Block signals with mask */
-		
-		if ((pid = fork()) == 0) {				/* In child */
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);  	/* Unblock signals */
-			setpgid(0,0);					/* New child process group id */
-			execvp(argv[0], argv);				/* Execute command with argument vector */
-			printf("%s: Command not found\n", argv[0]);
-			fflush(stdout);
-			exit(1);
+		if (sigemptyset(&mask) != 0) {				/* Init an empty mask */
+			unix_error("SIGEMPTYSET error");		/* Report error */
 		}
-		if (!bg) {						/* Forground process */
-			addjob(jobs, pid, FG, cmdline);			/* Add job to job list */
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);		/* Unblock signals */ 
+		if (sigaddset(&mask, SIGCHLD) != 0) {			/* Adding SIGCHLD to mask*/
+			unix_error("SIGADDSET error");			/* Report error */
+		}
+		if (sigprocmask(SIG_BLOCK, &mask, 0) != 0) {		/* Block signals with mask */
+			unix_error("SIGPROCMASK error");                /* Report error */
+		}
+		if ((pid = fork()) == 0) {					/* In child */
+			if (sigprocmask(SIG_UNBLOCK, &mask, NULL) != 0) { 	/* Unblock signals */
+				unix_error("SIGPROCMASK error");		/* Report error */
+			}
+			if (setpgid(0,0) != 0) {				/* New child process group id */
+				unix_error("SETPGID error");			/* Report error */
+			}
+			if (execvp(argv[0], argv) != 0){			/* Execute command with argument vector */
+				printf("%s: Command not found\n", argv[0]);
+				fflush(stdout);
+				exit(1);
+			}
+		}
+		if (pid == -1) {						/* Error when fork was called */
+			unix_error("FORK error");				/* Report error */
+		}
+		if (!bg) {								/* Forground process */
+			addjob(jobs, pid, FG, cmdline);					/* Add job to job list */
+			if (sigprocmask(SIG_UNBLOCK, &mask, NULL) != 0) {               /* Unblock signals */
+				unix_error("SIGPROCMASK error");                        /* Report error */
+			}
 			waitfg(pid);	
 		}
 		else {									/* Background process */
@@ -204,7 +219,9 @@ void eval(char *cmdline)
 			job = getjobpid(jobs, pid);					/* Get job for jid */
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline );	
 			fflush(stdout);
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);				/* Unblock signals */
+			if (sigprocmask(SIG_UNBLOCK, &mask, NULL) != 0) {		/* Unblock signals */
+				unix_error("SIGPROCMASK error");			/* Report error */	
+			}
 		}
 	}	
     return;
@@ -335,12 +352,16 @@ void do_bgfg(char **argv)
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
 			fflush(stdout);
 			job->state = BG;				/* Changing status to BG */
-			kill(-job->pid, SIGCONT);			/* Sending SIGCONT to pid*/
+			if (kill(-job->pid, SIGCONT) != 0) {		/* Sending SIGCONT to pid*/
+				unix_error("SIGCONT error");		/* Report error */
+			}
 		}
-		else{							/* To forground */
+		else {							/* To forground */
 			job->state = FG;				/* Changing status to FG */
-			kill(-job->pid, SIGCONT);			/* Sending SIGCONT to pid*/	
-			waitfg(job->pid);
+			if (kill(-job->pid, SIGCONT) != 0) {		/* Sending SIGCONT to pid*/	
+				unix_error("SIGCONT error");		/* Report error */
+			}
+			waitfg(job->pid);				/* Wait while process is in forground */
 		}
 	}
 	else {								/* Missing argument */
